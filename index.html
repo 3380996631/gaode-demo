@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 小车屏幕：禁缩放，全屏 kiosk 下没有手势可用 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>小车导航 guide map</title>
+<link rel="stylesheet" href="styles.css">
+<!-- ⚠️ 必须在任何模块之前引入。AMapLoader 是这个脚本挂上来的全局变量，不是 npm 包。
+     defer 不能省：不加的话它会**阻塞解析**，CDN 慢或被墙时整页白着等，看起来像「打开没反应」。
+     defer 的经典脚本与 module 脚本同在一条队列里按文档顺序执行，所以 main.js 仍在它之后跑。 -->
+<script src="https://webapi.amap.com/loader.js" defer></script>
+</head>
+<body>
+
+<div id="map"></div>
+
+<aside id="panel">
+  <header class="bar">
+    <h1>小车导航</h1>
+    <label class="field">出行方式
+      <select id="mode">
+        <option value="driving">驾车</option>
+        <option value="riding">骑行</option>
+      </select>
+    </label>
+    <!-- ⚠️ 这些 value 是 **REST v5 的策略名**（amaprest.js 的 STRATEGY 表），
+         不是 JSAPI 的 AMap.DrivingPolicy 常量 —— 那套数字在 REST 下不存在。
+         写错名字会当场抛 B02100（高德自己不报这个错，见 amaprest.js 的 strategyOf）。 -->
+    <label class="field" id="policy-wrap">策略
+      <select id="policy">
+        <option value="AVOID_CONGESTION">躲避拥堵</option>
+        <option value="LEAST_TIME">最快捷</option>
+        <option value="RECOMMENDED">高德推荐</option>
+        <option value="NO_HIGHWAY">不走高速</option>
+        <option value="LEAST_FEE">最少收费</option>
+      </select>
+    </label>
+  </header>
+
+  <!-- 序号是渲染产物，不是数据：每次按 index 重算，插入/删除后永远不会串号 -->
+  <section id="places"></section>
+
+  <div class="bar">
+    <button id="add-wpt">+ 添加途经点</button>
+    <button id="plan" class="primary">开始规划</button>
+  </div>
+  <div class="bar">
+    <button id="compare">方案对比</button>
+    <button id="nav">开始导航</button>
+    <button id="stop-nav" class="danger" hidden>结束导航</button>
+  </div>
+
+  <p id="status" role="status">正在加载…</p>
+
+  <section id="summary"></section>
+  <section id="progress" hidden><div id="progress-fill"></div></section>
+  <section id="compare-table" hidden></section>
+  <section id="steps"></section>
+
+  <div class="bar">
+    <span class="field">导出</span>
+    <button data-export="txt">TXT</button>
+    <button data-export="gpx">GPX</button>
+    <button data-export="geojson">GeoJSON</button>
+    <button data-export="json">机器 JSON</button>
+  </div>
+
+  <section id="history"></section>
+</aside>
+
+<script type="module" src="src/main.js"></script>
+
+<!-- ⚠️ 这段是**启动诊断，不是业务逻辑**（业务逻辑全在 src/ 里），所以允许它留在 HTML 里。
+     它挡的是本项目最忌讳的一类失败：**页面一片死，却不报任何错**。
+     最典型的就是双击打开 —— ES Module 在 file:// 下会被浏览器以 CORS 拦掉，
+     main.js 根本不会执行，页面上只剩一副没人绑事件的空壳。 -->
+<script>
+setTimeout(function () {
+  if (window.__guideMapBooted) return;
+  var p = document.getElementById('status');
+  p.className = 'error';
+  p.textContent = location.protocol === 'file:'
+    ? '打不开：本页必须走本地服务器，双击打开会被浏览器拦掉 ES Module。'
+      + '在项目目录运行 `python -m http.server 8000`，再访问 http://localhost:8000'
+    : '打不开：src/main.js 没能执行，按 F12 看 Console 里的报错';
+}, 3000);
+</script>
+</body>
+</html>
